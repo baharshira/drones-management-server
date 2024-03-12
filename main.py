@@ -9,6 +9,8 @@ from pymongo import MongoClient
 import os
 from fastapi.middleware.cors import CORSMiddleware
 
+host_ip = os.getenv("HOST_IP", "default_ip")
+port = os.getenv("PORT", "8000") 
 
 load_dotenv()
 app = FastAPI()
@@ -112,4 +114,4 @@ async def get_schedules_by_drone(drone_id):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run("main:app", host=host_ip, port=int(port), log_level="info")
