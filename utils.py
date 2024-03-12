@@ -33,10 +33,14 @@ def perform_update(collection: Collection, document_id: str, update_data: dict) 
     return {"message": "Document updated successfully", "id": document_id, "new data": update_data}
 
 
-def convert_object_id_to_str(document):
-    if document:
-        document["_id"] = str(document["_id"])
-    return document
+def convert_object_id_to_str(item):
+    if isinstance(item, list):
+        return [convert_object_id_to_str(subitem) for subitem in item]
+    elif isinstance(item, dict):
+        return {key: convert_object_id_to_str(value) for key, value in item.items()}
+    elif isinstance(item, ObjectId):
+        return str(item)
+    return item
 
 
 def fetch_data(collection, query):
