@@ -1,33 +1,45 @@
-import os
-import json
-from datetime import datetime, timezone
 from pymongo import MongoClient
+import os
+from datetime import datetime
 
-client = MongoClient(os.environ["DATABASE"])
-db = client.drones_management
+MONGO_URI = os.environ.get('DATABASE')
+DB_NAME = 'drones_management'
+
+client = MongoClient(MONGO_URI)
+db = client[DB_NAME]
+schedules_collection = db.schedules
+drones_collection = db.drones
 
 
 def lambda_handler(event, context):
-    now = datetime.now(timezone.utc)
-    updated_drones = []
+    current_time = datetime.utcnow()
 
-    # Find schedules that are currently active
-    current_schedules = db.schedules.find({
-        "start": {"$lte": now},
-        "end": {"$gte": now}
-    })
+    # Find schedules that have arrived but not yet processed
+    arrived_schedules = schedules_collection.find({"start": {"$lte": current_time},
+                                                   "end": {"$get": current_time},
+                                                   "status": "available"})
 
-    for schedule in current_schedules:
-        # Update the corresponding drone's status to "occupied"
-        result = db.drones.update_one(
-            {"_id": schedule['drone']},
-            {"$set": {"status": "occupied", "currentMission": schedule['mission']}}
+    for schedule in arrived_schedules:
+        # Update the corresponding drone status and missionId
+        update_result = drones_collection.update_one(
+            {"_id": schedule["droneId"]},
+            {
+                "$set": {
+                    "status": "occupied",
+                    "missionId": schedule["missionId"]
+                }
+            }
         )
 
-        if result.modified_count > 0:
-            updated_drones.append(str(schedule['drone']))
+        # Optionally, mark the schedule as processed to avoid duplicate processing
+        if update_result.modified_count > 0:
+            schedules_collection.update_one(
+                {"_id": schedule["_id"]},
+                {"$set": {"processed": True}}
+            )
 
+    # Return a response or log output
     return {
-        'statusCode': 200,
-        'body': json.dumps(f'Updated drones: {updated_drones}')
+        "statusCode": 200,
+        "body": "Drone statuses updated based on schedules."
     }
