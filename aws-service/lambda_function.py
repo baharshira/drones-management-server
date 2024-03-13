@@ -22,11 +22,11 @@ def lambda_handler(event, context):
     for schedule in arrived_schedules:
         # Update the corresponding drone status and missionId
         update_result = drones_collection.update_one(
-            {"_id": schedule["droneId"]},
+            {"_id": schedule["drone"]},
             {
                 "$set": {
                     "status": "occupied",
-                    "missionId": schedule["missionId"]
+                    "current_mission_id": schedule["mission"]
                 }
             }
         )
